@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f4f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14151a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="골든아워">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<title>골든아워 플래너</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="style.css?v=10">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">DP 촬영 준비</p>
+      <h1>골든아워 플래너</h1>
+    </div>
+    <p class="sub">태양 위치는 SunCalc로 계산하고, 구름 예보는 Open-Meteo, 장소 검색은 OpenStreetMap을 써요.</p>
+  </header>
+
+  <section class="controls" aria-label="촬영 조건">
+    <div class="field">
+      <label for="preset">로케이션</label>
+      <div class="row">
+        <select id="preset"></select>
+        <button id="geoBtn" type="button" hidden>현재 위치</button>
+      </div>
+    </div>
+    <div class="field grow">
+      <label for="search">장소 검색</label>
+      <div class="row">
+        <input id="search" type="text" placeholder="예: 성산일출봉, 강릉, 남산타워">
+        <button id="searchBtn" type="button">검색</button>
+      </div>
+      <ul id="results" class="results" hidden></ul>
+    </div>
+    <div class="field">
+      <label for="lat">위도</label>
+      <input id="lat" type="number" step="0.0001">
+    </div>
+    <div class="field">
+      <label for="lon">경도</label>
+      <input id="lon" type="number" step="0.0001">
+    </div>
+    <div class="field">
+      <label for="date">촬영일</label>
+      <input id="date" type="date">
+    </div>
+  </section>
+
+  <section class="sessions" aria-label="촬영 시간대">
+    <article class="session" id="am"></article>
+    <article class="session" id="pm"></article>
+  </section>
+
+  <section class="panel" id="weather" aria-label="날씨">
+    <div class="panel-head">
+      <h2>날씨 <small class="muted" id="wxWhere"></small></h2>
+      <div class="seg" id="wxTabs" role="tablist" aria-label="예보 보기">
+        <button type="button" role="tab" data-tab="hourly">시간별</button>
+        <button type="button" role="tab" data-tab="daily">일별</button>
+        <button type="button" role="tab" data-tab="weekly">주간</button>
+        <button type="button" role="tab" data-tab="models">기관별 비교</button>
+      </div>
+    </div>
+    <div id="wxAlerts" class="alerts"></div>
+    <div id="wxBody"></div>
+    <p id="wxSource" class="note"></p>
+  </section>
+
+  <section class="panel" aria-label="베스트 촬영일">
+    <div class="panel-head">
+      <h2>베스트 촬영일 <small class="muted">· 16일 예보</small></h2>
+      <div class="seg" id="bestSeg" role="radiogroup" aria-label="비교할 세션">
+        <button type="button" data-mode="pm" aria-pressed="true">저녁</button>
+        <button type="button" data-mode="am" aria-pressed="false">아침</button>
+        <button type="button" data-mode="both" aria-pressed="false">둘 중 좋은 쪽</button>
+      </div>
+    </div>
+    <p id="bestSummary" class="best-summary"></p>
+    <ol id="bestList" class="best-list"></ol>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>하루 빛 흐름</h2>
+      <div class="legend">
+        <span><i class="sw night"></i>밤</span>
+        <span><i class="sw blue"></i>블루아워 (−6°~−4°)</span>
+        <span><i class="sw gold"></i>골든아워 (−4°~6°)</span>
+        <span><i class="sw day"></i>주간</span>
+      </div>
+    </div>
+    <div class="scroll"><svg id="timeline" viewBox="0 0 960 230" role="img" aria-label="시간대별 태양 고도와 구름량"></svg></div>
+    <p id="wxNote" class="note"></p>
+  </section>
+
+  <section class="panel split">
+    <div>
+      <div class="panel-head"><h2>태양 방향</h2></div>
+      <svg id="compass" viewBox="-130 -130 260 260" role="img" aria-label="태양 방위"></svg>
+    </div>
+    <div class="scrub">
+      <label for="time">시간 스크럽 <output id="timeOut"></output></label>
+      <input id="time" type="range" min="0" max="1439" step="5">
+      <dl class="readout">
+        <div><dt>방위각</dt><dd id="rAz">–</dd></div>
+        <div><dt>고도</dt><dd id="rAlt">–</dd></div>
+        <div><dt>그림자 길이</dt><dd id="rShadow">–</dd></div>
+        <div><dt>구름 (하/중/상)</dt><dd id="rCloud">–</dd></div>
+      </dl>
+      <button id="copyBtn" type="button" class="primary">콜시트용 텍스트 복사</button>
+      <textarea id="callsheet" readonly rows="9" aria-label="콜시트 텍스트"></textarea>
+    </div>
+  </section>
+
+  <footer class="foot">
+    하늘 점수는 구름층 비율로 낸 추정치예요. 촬영 당일에는 실제 하늘을 한 번 더 보세요.
+  </footer>
+</div>
+<script src="suncalc.js"></script>
+<script src="weather.js?v=10"></script>
+<script src="app.js?v=10"></script>
+</body>
+</html>
